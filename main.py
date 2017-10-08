@@ -60,12 +60,14 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :return: The Tensor for the last layer of output
     """
     # TODO: Implement function
+    # Matching the num_outputs to add skip coonection
     num_outputs = 512
     conv_1d = tf.layers.conv2d(vgg_layer7_out, num_outputs, 1, padding='same',
                                kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     output = tf.layers.conv2d_transpose(conv_1d, num_outputs, 4, 2, padding='same',
                                         kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     
+    # First skip connection from Layer 4
     output = tf.add(output, vgg_layer4_out)
     
     num_outputs = 256
@@ -74,8 +76,10 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     output = tf.layers.conv2d_transpose(output, num_outputs, k_size, stride, padding='same',
                                         kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     
+    # Second skip connection from Layer 3
     output = tf.add(output, vgg_layer3_out)
     
+    # Final output Layer with 2 output layers
     k_size = 16
     stride = (8, 8)
     output = tf.layers.conv2d_transpose(output, num_classes, k_size, stride, padding='same',
@@ -138,14 +142,18 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
                             feed_dict = {input_image: x,
                                          correct_label: y,
                                          keep_prob: 0.75})
+            # Crating list of losses for each batch
             l_list.append(l)
+
+            # printing output to the terminal after every 3 batches
             if not batch_count%3:
                 print("Batch {} loss: {:3.5f}".format(batch_count, l))
+        # printing the output at the end of epoch
         print("\nLoss at end of epoch {}: {:3.5f}\n".format(e+1, l))
     
+    # returning list of losses
     return l_list
 
-get_batches_fn = helper.gen_batch_function('./data/data_road/training', (160, 576))
 tests.test_train_nn(train_nn)
 
 
@@ -198,6 +206,7 @@ def run():
         #  helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep_prob, input_image)
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, keep, img)
         
+        # Saving loss list in a csv file
         loss_file = runs_dir + '/loss_' + str(time.time()) + '.csv'
         
         print("Saving loss.. ")
